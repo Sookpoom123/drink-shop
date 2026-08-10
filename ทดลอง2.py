@@ -10,7 +10,7 @@ st.set_page_config(
     page_title="ร้านน้ำสร้างตัว 🧋", 
     page_icon="🧋", 
     layout="centered",
-    initial_sidebar_state="expanded"  # ตั้งค่าให้ Sidebar กางออกไว้เสมอเป็นค่าเริ่มต้น
+    initial_sidebar_state="expanded"
 )
 
 DB_FILE = "sales_data.db"
@@ -253,8 +253,6 @@ st.markdown(
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-
-    /* เปิดให้เห็น Header เพื่อใช้ปุ่มเปิด-ปิด Sidebar ได้ */
     header {visibility: visible !important;}
 
     .stApp {
@@ -451,7 +449,6 @@ else:
         unsafe_allow_html=True
     )
 
-    # --- ปุ่มทางลัดสำหรับเปิด Sidebar ในกรณีที่หาปุ่มซ้ายบนไม่เจอ ---
     if st.button("☰ เปิด/ปิด เมนูด้านซ้าย ( Sidebar )", key="toggle_sidebar_btn"):
         st.info("💡 คุณสามารถกดปุ่มลูกศร `>` ที่มุมบนซ้ายสุดของหน้าจอเพื่อเปิด/ปิดเมนูด้านซ้ายได้เลยครับ")
 
