@@ -9,7 +9,8 @@ import extra_streamlit_components as stx
 st.set_page_config(
     page_title="ร้านน้ำสร้างตัว 🧋", 
     page_icon="🧋", 
-    layout="centered"
+    layout="centered",
+    initial_sidebar_state="expanded"  # ตั้งค่าให้ Sidebar กางออกไว้เสมอเป็นค่าเริ่มต้น
 )
 
 DB_FILE = "sales_data.db"
@@ -22,7 +23,6 @@ cookie_manager = stx.CookieManager()
 
 # --- รายการเมนูเริ่มต้น (68 เมนู) ---
 DEFAULT_MENU = {
-    # --- ชาใส / ชาผลไม้ / กาแฟ / นมสดรสต่างๆ ---
     "ชาดำเย็น": {"cost": 6.61, "price": 19},
     "ชามะนาว": {"cost": 7.65, "price": 19},
     "ชาเขียวมะนาว": {"cost": 8.45, "price": 19},
@@ -50,8 +50,6 @@ DEFAULT_MENU = {
     "กล้วยนมสด": {"cost": 11.49, "price": 25},
     "แคนตาลูปนมสด": {"cost": 11.49, "price": 25},
     "ช็อคโกแลตนมสด": {"cost": 14.64, "price": 25},
-
-    # --- เมนูปั่น ---
     "ชาแดงปั่น": {"cost": 14.72, "price": 35},
     "ชาเขียวปั่น": {"cost": 15.73, "price": 35},
     "ชาไต้หวันปั่น": {"cost": 13.04, "price": 35},
@@ -80,16 +78,11 @@ DEFAULT_MENU = {
     "ผงแคนตาลูป": {"cost": 14.77, "price": 35},
     "ผงกล้วย": {"cost": 14.77, "price": 35},
     "ผงเผือก": {"cost": 15.25, "price": 35},
-
-    # --- ชานม / ชาเขียว / ชานมเย็น ---
-    "ชานมไต้หวัน": {"cost": 11.12, "price": 19},
+    "ชาไต้หวัน": {"cost": 11.12, "price": 19},
     "ชานมผลไม้": {"cost": 11.89, "price": 25},
     "ชานมโกโก้": {"cost": 12.13, "price": 25},
-    "ชานมกาแฟ": {"cost": 12.76, "price": 25},
-    "ชานมโอวัลติน": {"cost": 11.57, "price": 25},
     "ชานมคาราเมล": {"cost": 14.03, "price": 30},
     "ชานมวนิลา": {"cost": 14.03, "price": 30},
-    "ชานมน้ำผึ้ง": {"cost": 13.15, "price": 25},
     "ชานมไต้หวันบราวซูการ์": {"cost": 11.96, "price": 25},
     "ชานมเผือก": {"cost": 13.20, "price": 25},
     "ชาผลไม้ใส": {"cost": 8.03, "price": 19},
@@ -98,8 +91,6 @@ DEFAULT_MENU = {
     "ชาเขียวน้ำผึ้งมะนาว": {"cost": 12.11, "price": 25},
     "ชาแดงน้ำผึ้งมะนาว": {"cost": 11.31, "price": 25},
     "น้ำผึ้งมะนาว": {"cost": 10.07, "price": 19},
-
-    # --- เมนูบ๊วย ---
     "ชาลูกบ๊วย": {"cost": 9.03, "price": 24},
     "น้ำลูกบ๊วย": {"cost": 6.95, "price": 24},
     "น้ำลูกบ๊วยโซดา": {"cost": 11.94, "price": 24},
@@ -262,7 +253,9 @@ st.markdown(
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
+
+    /* เปิดให้เห็น Header เพื่อใช้ปุ่มเปิด-ปิด Sidebar ได้ */
+    header {visibility: visible !important;}
 
     .stApp {
         background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 50%, #A1C4FD 100%) !important;
@@ -349,7 +342,6 @@ if not st.session_state.logged_in:
                         st.session_state.username = user_data[0]
                         st.session_state.role = user_data[1] if user_data[1] else "user"
                         
-                        # บันทึกสถานะเข้า Cookie
                         cookie_manager.set('auth_user', user_data[0])
                         cookie_manager.set('auth_role', user_data[1] if user_data[1] else "user")
                         
@@ -393,6 +385,7 @@ if not st.session_state.logged_in:
 # 2. หน้าจอหลักหลังเข้าสู่ระบบสำเร็จ
 # ==========================================
 else:
+    # --- Sidebar เมนูด้านซ้าย ---
     with st.sidebar:
         role_badge = "👑 ADMIN" if st.session_state.role == "admin" else "👤 USER"
         st.markdown(f"### 👤 ผู้ใช้งาน: **{st.session_state.username}**")
@@ -403,7 +396,6 @@ else:
             st.session_state.username = ""
             st.session_state.role = "user"
             
-            # ลบคุกกี้เมื่อกดออกจากระบบ
             cookie_manager.delete('auth_user')
             cookie_manager.delete('auth_role')
             st.rerun()
@@ -448,6 +440,7 @@ else:
                 else:
                     st.info("ไม่มีสมาชิกอื่นในระบบ")
 
+    # --- ส่วนหัวของหน้าหลัก ---
     st.markdown(
         """
         <div style="background: linear-gradient(135deg, #FFE29F 0%, #FF719A 100%); padding: 18px; border-radius: 18px; border: 2px solid #FF5252; margin-bottom: 20px; text-align: center;">
@@ -457,6 +450,10 @@ else:
         """, 
         unsafe_allow_html=True
     )
+
+    # --- ปุ่มทางลัดสำหรับเปิด Sidebar ในกรณีที่หาปุ่มซ้ายบนไม่เจอ ---
+    if st.button("☰ เปิด/ปิด เมนูด้านซ้าย ( Sidebar )", key="toggle_sidebar_btn"):
+        st.info("💡 คุณสามารถกดปุ่มลูกศร `>` ที่มุมบนซ้ายสุดของหน้าจอเพื่อเปิด/ปิดเมนูด้านซ้ายได้เลยครับ")
 
     # --- ส่วนที่ 1: ตารางราคา ---
     menu_count = len(current_menu)
