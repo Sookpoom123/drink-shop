@@ -3,6 +3,7 @@ import pandas as pd
 import sqlite3
 import hashlib
 from datetime import date
+import extra_streamlit_components as stx
 
 # --- ตั้งค่าหน้าตาเว็บไซต์ ---
 st.set_page_config(
@@ -15,6 +16,9 @@ DB_FILE = "sales_data.db"
 ADMIN_SECRET_KEY = "3475"  # 🔑 รหัสลับสำหรับแต่งตั้ง Admin
 PEARL_PRICE = 5.0           # 🧋 ราคาไข่มุก
 PEARL_COST = 1.0            # 🧋 ต้นทุนไข่มุก
+
+# --- จัดการ Cookie สำหรับคงสถานะ Login เมื่อกด Refresh ---
+cookie_manager = stx.get_cookie_manager()
 
 # --- รายการเมนูเริ่มต้น (68 เมนู) ---
 DEFAULT_MENU = {
@@ -105,11 +109,9 @@ DEFAULT_MENU = {
     "น้ำลูกบ๊วยปั่น": {"cost": 9.70, "price": 29},
 }
 
-# --- ฟังก์ชันจัดการระบบความปลอดภัย ---
 def make_hashes(password):
     return hashlib.sha256(str.encode(password)).hexdigest()
 
-# --- ส่วนจัดการฐานข้อมูล (SQLite) ---
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -140,7 +142,6 @@ def init_db():
         )
     ''')
     
-    # เพิ่มเมนูเริ่มต้นลงฐานข้อมูลหากยังไม่มี
     c.execute("SELECT COUNT(*) FROM menu_items")
     if c.fetchone()[0] == 0:
         for name, info in DEFAULT_MENU.items():
@@ -235,18 +236,22 @@ def delete_sale_by_id(record_id):
     conn.commit()
     conn.close()
 
-# เรียกใช้งานฐานข้อมูล
 init_db()
 
-# ตัวแปรสถานะการเข้าสู่ระบบ
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "username" not in st.session_state:
-    st.session_state.username = ""
-if "role" not in st.session_state:
-    st.session_state.role = "user"
+# --- ตรวจสอบสถานะการเข้าสู่ระบบผ่าน Cookie ---
+saved_user = cookie_manager.get('auth_user')
+saved_role = cookie_manager.get('auth_role')
 
-# โหลดเมนูจากฐานข้อมูล SQLite
+if "logged_in" not in st.session_state:
+    if saved_user and saved_role:
+        st.session_state.logged_in = True
+        st.session_state.username = saved_user
+        st.session_state.role = saved_role
+    else:
+        st.session_state.logged_in = False
+        st.session_state.username = ""
+        st.session_state.role = "user"
+
 current_menu = get_menu_from_db()
 
 # ==========================================
@@ -343,6 +348,11 @@ if not st.session_state.logged_in:
                         st.session_state.logged_in = True
                         st.session_state.username = user_data[0]
                         st.session_state.role = user_data[1] if user_data[1] else "user"
+                        
+                        # บันทึกสถานะเข้า Cookie
+                        cookie_manager.set('auth_user', user_data[0])
+                        cookie_manager.set('auth_role', user_data[1] if user_data[1] else "user")
+                        
                         st.success(f"🎉 ยินดีต้อนรับคุณ {st.session_state.username}!")
                         st.rerun()
                     else:
@@ -383,7 +393,6 @@ if not st.session_state.logged_in:
 # 2. หน้าจอหลักหลังเข้าสู่ระบบสำเร็จ
 # ==========================================
 else:
-    # Sidebar: แสดงผู้ใช้งาน & ปุ่มจัดการเมนู
     with st.sidebar:
         role_badge = "👑 ADMIN" if st.session_state.role == "admin" else "👤 USER"
         st.markdown(f"### 👤 ผู้ใช้งาน: **{st.session_state.username}**")
@@ -393,12 +402,15 @@ else:
             st.session_state.logged_in = False
             st.session_state.username = ""
             st.session_state.role = "user"
+            
+            # ลบคุกกี้เมื่อกดออกจากระบบ
+            cookie_manager.delete('auth_user')
+            cookie_manager.delete('auth_role')
             st.rerun()
 
         st.divider()
         st.header("⚙️ จัดการเมนู")
 
-        # พนักงานทั่วไป และ Admin สามารถเพิ่มเมนูใหม่ได้
         with st.expander("➕ เพิ่มเมนูใหม่"):
             new_name = st.text_input("ชื่อเมนูใหม่")
             new_cost = st.number_input("ราคาต้นทุน (บาท)", min_value=0.0, value=10.0, step=0.5)
@@ -412,7 +424,6 @@ else:
                 else:
                     st.warning("กรุณากรอกชื่อเมนู")
 
-        # เฉพาะ Admin เท่านั้นที่ลบเมนูได้
         if st.session_state.role == "admin":
             with st.expander("🗑️ ลบเมนู (สิทธิ์ Admin)"):
                 if len(current_menu) > 0:
@@ -437,7 +448,6 @@ else:
                 else:
                     st.info("ไม่มีสมาชิกอื่นในระบบ")
 
-    # Header หลัก
     st.markdown(
         """
         <div style="background: linear-gradient(135deg, #FFE29F 0%, #FF719A 100%); padding: 18px; border-radius: 18px; border: 2px solid #FF5252; margin-bottom: 20px; text-align: center;">
