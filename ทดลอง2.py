@@ -3,7 +3,6 @@ import pandas as pd
 import sqlite3
 import hashlib
 from datetime import date
-import extra_streamlit_components as stx
 import time
 
 # --- ตั้งค่าหน้าตาเว็บไซต์ ---
@@ -18,9 +17,6 @@ DB_FILE = "sales_data.db"
 ADMIN_SECRET_KEY = "3475"  # 🔑 รหัสลับสำหรับแต่งตั้ง Admin
 PEARL_PRICE = 5.0           # 🧋 ราคาไข่มุก
 PEARL_COST = 1.0            # 🧋 ต้นทุนไข่มุก
-
-# --- จัดการ Cookie ---
-cookie_manager = stx.CookieManager()
 
 # --- รายการเมนูเริ่มต้น (68 เมนู) ---
 DEFAULT_MENU = {
@@ -230,28 +226,13 @@ def delete_sale_by_id(record_id):
 
 init_db()
 
-# --- ระบบจัดการ Session State & Cookie ---
+# --- ระบบจัดการ Session State (เสถียร 100% บนมือถือ) ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
+if "username" not in st.session_state:
     st.session_state.username = ""
+if "role" not in st.session_state:
     st.session_state.role = "user"
-
-# ตรวจสอบการ Logout จาก Query Param หรือ Cookie
-if "action" in st.query_params and st.query_params["action"] == "logout":
-    st.session_state.logged_in = False
-    st.session_state.username = ""
-    st.session_state.role = "user"
-    st.query_params.clear()
-
-cookies = cookie_manager.get_all()
-
-if not st.session_state.logged_in and cookies:
-    saved_user = cookies.get('auth_user')
-    saved_role = cookies.get('auth_role')
-    if saved_user:
-        st.session_state.logged_in = True
-        st.session_state.username = saved_user
-        st.session_state.role = saved_role if saved_role else "user"
 
 current_menu = get_menu_from_db()
 
@@ -344,18 +325,13 @@ if not st.session_state.logged_in:
                 st.write("")
                 
                 if st.button("🚀 เข้าสู่ระบบ", use_container_width=True):
-                    user_data = login_user(login_user_input, login_pass_input)
+                    user_data = login_user(login_user_input.strip(), login_pass_input.strip())
                     if user_data:
                         st.session_state.logged_in = True
                         st.session_state.username = user_data[0]
                         st.session_state.role = user_data[1] if user_data[1] else "user"
-                        
-                        # บันทึก Cookie
-                        cookie_manager.set('auth_user', user_data[0])
-                        cookie_manager.set('auth_role', user_data[1] if user_data[1] else "user")
-                        
                         st.success(f"🎉 ยินดีต้อนรับคุณ {st.session_state.username}!")
-                        time.sleep(0.5)
+                        time.sleep(0.3)
                         st.rerun()
                     else:
                         st.error("❌ ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง")
@@ -402,18 +378,7 @@ else:
         st.caption(f"สถานะ: `{role_badge}`")
         
         if st.button("🚪 ออกจากระบบ", use_container_width=True):
-            st.session_state.logged_in = False
-            st.session_state.username = ""
-            st.session_state.role = "user"
-            
-            # ลบ Cookie และส่ง Flag ป้องกันมือถือดึง Cookie เก่ากลับมา
-            try:
-                cookie_manager.delete('auth_user')
-                cookie_manager.delete('auth_role')
-            except:
-                pass
-                
-            st.query_params["action"] = "logout"
+            st.session_state.clear()
             st.rerun()
 
         st.divider()
