@@ -18,7 +18,11 @@ PEARL_PRICE = 5.0           # 🧋 ราคาไข่มุก
 PEARL_COST = 1.0            # 🧋 ต้นทุนไข่มุก
 
 # --- จัดการ Cookie สำหรับคงสถานะ Login เมื่อกด Refresh ---
-cookie_manager = stx.get_cookie_manager()
+@st.cache_resource
+def get_cookie_manager():
+    return stx.CookieManager()
+
+cookie_manager = get_cookie_manager()
 
 # --- รายการเมนูเริ่มต้น (68 เมนู) ---
 DEFAULT_MENU = {
