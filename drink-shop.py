@@ -10,27 +10,23 @@ st.set_page_config(
     page_title="ร้านน้ำสร้างตัว 🧋", 
     page_icon="🧋", 
     layout="centered",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # ==========================================
-# 🔒 ซ่อนปุ่ม GitHub และปรับแต่งให้รองรับมือถือ
+# 🔒 ตกแต่งสไตล์ และซ่อนเมนูที่ไม่จำเป็น
 # ==========================================
 st.markdown(
     """
     <style>
-    /* ซ่อนเฉพาะเครื่องมือ Streamlit และ Footer แต่เปิดให้ปุ่มเปิดเมนูบนมือถือทำงานได้ */
+    /* ซ่อนเฉพาะเครื่องมือ Streamlit และ Footer */
     [data-testid="stToolbar"] { display: none !important; }
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
-    header[data-testid="stHeader"] { background: transparent !important; }
+    header[data-testid="stHeader"] { visibility: hidden !important; }
 
     .stApp {
         background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 50%, #A1C4FD 100%) !important;
-    }
-
-    section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #FFE29F 0%, #FFAE34 100%) !important;
     }
 
     .header-card {
@@ -303,7 +299,6 @@ if "username" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = "user"
 
-# หากกด Refresh แต่มีค่า user บันทึกไว้ใน URL ให้รักษาสถานะเข้าสู่ระบบไว้
 if not st.session_state.logged_in and "user" in st.query_params:
     saved_user = st.query_params["user"]
     st.session_state.logged_in = True
@@ -347,7 +342,6 @@ if not st.session_state.logged_in:
                         st.session_state.username = user_data[0]
                         st.session_state.role = user_data[1] if user_data[1] else "user"
                         
-                        # บันทึกสถานะไว้ใน URL parameter
                         st.query_params["user"] = user_data[0]
                         
                         st.success(f"🎉 ยินดีต้อนรับคุณ {st.session_state.username}!")
@@ -388,64 +382,15 @@ if not st.session_state.logged_in:
                             st.error("❌ ชื่อผู้ใช้งานนี้มีในระบบแล้ว")
 
 # ==========================================
-# 2. หน้าจอหลักหลังเข้าสู่ระบบสำเร็จ
+# 2. หน้าจอหลักหลังเข้าสู่ระบบสำเร็จ (อยู่บน Main Page ทั้งหมด)
 # ==========================================
 else:
-    # --- Sidebar เมนูด้านซ้าย ---
-    with st.sidebar:
-        role_badge = "👑 ADMIN" if st.session_state.role == "admin" else "👤 USER"
-        st.markdown(f"### 👤 ผู้ใช้งาน: **{st.session_state.username}**")
-        st.caption(f"สถานะ: `{role_badge}`")
-        
-        if st.button("🚪 ออกจากระบบ", use_container_width=True):
-            st.query_params.clear()
-            st.session_state.clear()
-            st.rerun()
-
-        st.divider()
-        st.header("⚙️ จัดการเมนู")
-
-        with st.expander("➕ เพิ่มเมนูใหม่"):
-            new_name = st.text_input("ชื่อเมนูใหม่")
-            new_cost = st.number_input("ราคาต้นทุน (บาท)", min_value=0.0, value=10.0, step=0.5)
-            new_price = st.number_input("ราคาขายปกติ (บาท)", min_value=0, value=25)
-            
-            if st.button("💾 บันทึกเมนูใหม่", use_container_width=True):
-                if new_name.strip() != "":
-                    save_menu_item_db(new_name.strip(), new_cost, new_price)
-                    st.success(f"เพิ่มเมนู '{new_name}' เรียบร้อย!")
-                    st.rerun()
-                else:
-                    st.warning("กรุณากรอกชื่อเมนู")
-
-        if st.session_state.role == "admin":
-            with st.expander("🗑️ ลบเมนู (สิทธิ์ Admin)"):
-                if len(current_menu) > 0:
-                    delete_item = st.selectbox("เลือกเมนูที่ต้องการลบ", list(current_menu.keys()))
-                    if st.button("❌ ลบเมนูนี้", use_container_width=True):
-                        delete_menu_item_db(delete_item)
-                        st.success(f"ลบเมนู '{delete_item}' เรียบร้อย!")
-                        st.rerun()
-
-            with st.expander("👥 จัดการสมาชิก (สิทธิ์ Admin)"):
-                all_users = get_all_users()
-                other_users = [f"{u[0]} ({u[1].upper()})" for u in all_users if u[0] != st.session_state.username]
-                
-                if other_users:
-                    selected_user_str = st.selectbox("เลือกบัญชีที่ต้องการลบ", other_users, key="del_user_select")
-                    target_username = selected_user_str.split(" ")[0]
-                    
-                    if st.button("❌ ลบบัญชีนี้", key="btn_del_user", use_container_width=True):
-                        delete_user(target_username)
-                        st.success(f"ลบบัญชี '{target_username}' สำเร็จ!")
-                        st.rerun()
-                else:
-                    st.info("ไม่มีสมาชิกอื่นในระบบ")
-
-    # --- ส่วนหัวของหน้าหลัก ---
+    # --- ส่วนหัวของหน้าหลัก + แถบสถานะผู้ใช้งาน ---
+    role_badge = "👑 ADMIN" if st.session_state.role == "admin" else "👤 USER"
+    
     st.markdown(
         """
-        <div style="background: linear-gradient(135deg, #FFE29F 0%, #FF719A 100%); padding: 18px; border-radius: 18px; border: 2px solid #FF5252; margin-bottom: 20px; text-align: center;">
+        <div style="background: linear-gradient(135deg, #FFE29F 0%, #FF719A 100%); padding: 18px; border-radius: 18px; border: 2px solid #FF5252; margin-bottom: 15px; text-align: center;">
             <h2 style="color: #7B1FA2; margin: 0; font-size: 26px; font-weight: bold;">🧋 ร้านน้ำสร้างตัว</h2>
             <p style="color: #4A148C; margin: 5px 0 0 0; font-size: 15px; font-weight: 500;">ระบบบันทึกยอดขาย & กำไรประจำวัน</p>
         </div>
@@ -453,10 +398,68 @@ else:
         unsafe_allow_html=True
     )
 
+    # แถบแสดงสถานะผู้ใช้งาน และปุ่มออกจากระบบบนหน้าหลัก
+    col_user_info, col_logout_btn = st.columns([2, 1])
+    with col_user_info:
+        st.markdown(f"👤 **ผู้ใช้งาน:** `{st.session_state.username}` | สถานะ: `{role_badge}`")
+    with col_logout_btn:
+        if st.button("🚪 ออกจากระบบ", use_container_width=True, key="main_logout"):
+            st.query_params.clear()
+            st.session_state.clear()
+            st.rerun()
+
+    st.divider()
+
+    # --- ส่วนจัดการระบบ (จัดการเมนู & สิทธิ์สมาชิก) บนหน้าหลัก ---
+    with st.expander("⚙️ **จัดการระบบ (เพิ่ม/ลบเมนู & จัดการสมาชิก)**", expanded=False):
+        tab_add_menu, tab_del_menu, tab_users = st.tabs(["➕ เพิ่มเมนูใหม่", "🗑️ ลบเมนู (Admin)", "👥 จัดการสมาชิก (Admin)"])
+
+        with tab_add_menu:
+            new_name = st.text_input("ชื่อเมนูใหม่", key="m_add_name")
+            new_cost = st.number_input("ราคาต้นทุน (บาท)", min_value=0.0, value=10.0, step=0.5, key="m_add_cost")
+            new_price = st.number_input("ราคาขายปกติ (บาท)", min_value=0, value=25, key="m_add_price")
+            
+            if st.button("💾 บันทึกเมนูใหม่", use_container_width=True, key="btn_save_m"):
+                if new_name.strip() != "":
+                    save_menu_item_db(new_name.strip(), new_cost, new_price)
+                    st.success(f"เพิ่มเมนู '{new_name}' เรียบร้อย!")
+                    st.rerun()
+                else:
+                    st.warning("กรุณากรอกชื่อเมนู")
+
+        with tab_del_menu:
+            if st.session_state.role == "admin":
+                if len(current_menu) > 0:
+                    delete_item = st.selectbox("เลือกเมนูที่ต้องการลบ", list(current_menu.keys()), key="m_del_item")
+                    if st.button("❌ ลบเมนูนี้", use_container_width=True, key="btn_del_m"):
+                        delete_menu_item_db(delete_item)
+                        st.success(f"ลบเมนู '{delete_item}' เรียบร้อย!")
+                        st.rerun()
+            else:
+                st.info("🔒 เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถลบเมนูได้")
+
+        with tab_users:
+            if st.session_state.role == "admin":
+                all_users = get_all_users()
+                other_users = [f"{u[0]} ({u[1].upper()})" for u in all_users if u[0] != st.session_state.username]
+                
+                if other_users:
+                    selected_user_str = st.selectbox("เลือกบัญชีที่ต้องการลบ", other_users, key="m_del_user")
+                    target_username = selected_user_str.split(" ")[0]
+                    
+                    if st.button("❌ ลบบัญชีนี้", key="btn_del_usr", use_container_width=True):
+                        delete_user(target_username)
+                        st.success(f"ลบบัญชี '{target_username}' สำเร็จ!")
+                        st.rerun()
+                else:
+                    st.info("ไม่มีสมาชิกอื่นในระบบ")
+            else:
+                st.info("🔒 เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถจัดการสมาชิกได้")
+
     # --- ส่วนที่ 1: ตารางราคา ---
     menu_count = len(current_menu)
     with st.expander(f"📋 ดูตารางราคา & กำไรทั้งหมด (ทั้งหมด {menu_count} เมนู)", expanded=False):
-        search_menu = st.text_input("🔍 ค้นหาเมนูในตาราง...", "")
+        search_menu = st.text_input("🔍 ค้นหาเมนูในตาราง...", "", key="m_search_table")
         if current_menu:
             menu_data = []
             for item, info in current_menu.items():
