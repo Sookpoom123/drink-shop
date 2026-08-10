@@ -19,7 +19,7 @@ ADMIN_SECRET_KEY = "3475"  # 🔑 รหัสลับสำหรับแต�
 PEARL_PRICE = 5.0           # 🧋 ราคาไข่มุก
 PEARL_COST = 1.0            # 🧋 ต้นทุนไข่มุก
 
-# --- จัดการ Cookie สำหรับคงสถานะ Login (แก้ไขไม่ให้ขึ้นตัวหนังสือสีแดง) ---
+# --- จัดการ Cookie ---
 cookie_manager = stx.CookieManager()
 
 # --- รายการเมนูเริ่มต้น (68 เมนู) ---
@@ -236,7 +236,13 @@ if "logged_in" not in st.session_state:
     st.session_state.username = ""
     st.session_state.role = "user"
 
-# ดึง Cookie ที่เคยบันทึกไว้
+# ตรวจสอบการ Logout จาก Query Param หรือ Cookie
+if "action" in st.query_params and st.query_params["action"] == "logout":
+    st.session_state.logged_in = False
+    st.session_state.username = ""
+    st.session_state.role = "user"
+    st.query_params.clear()
+
 cookies = cookie_manager.get_all()
 
 if not st.session_state.logged_in and cookies:
@@ -400,9 +406,14 @@ else:
             st.session_state.username = ""
             st.session_state.role = "user"
             
-            cookie_manager.delete('auth_user')
-            cookie_manager.delete('auth_role')
-            time.sleep(0.5)
+            # ลบ Cookie และส่ง Flag ป้องกันมือถือดึง Cookie เก่ากลับมา
+            try:
+                cookie_manager.delete('auth_user')
+                cookie_manager.delete('auth_role')
+            except:
+                pass
+                
+            st.query_params["action"] = "logout"
             st.rerun()
 
         st.divider()
