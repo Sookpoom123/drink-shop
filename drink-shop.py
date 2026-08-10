@@ -14,15 +14,16 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🔒 ซ่อนปุ่ม GitHub, ปุ่ม Edit และ Toolbar ด้านบน
+# 🔒 ซ่อนปุ่ม GitHub และปรับแต่งให้รองรับมือถือ
 # ==========================================
 st.markdown(
     """
     <style>
+    /* ซ่อนเฉพาะเครื่องมือ Streamlit และ Footer แต่เปิดให้ปุ่มเปิดเมนูบนมือถือทำงานได้ */
     [data-testid="stToolbar"] { display: none !important; }
-    header[data-testid="stHeader"] { display: none !important; }
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
+    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden; }
+    header[data-testid="stHeader"] { background: transparent !important; }
 
     .stApp {
         background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 50%, #A1C4FD 100%) !important;
