@@ -308,6 +308,9 @@ init_db()
 # ==========================================
 cookie_manager = stx.CookieManager()
 
+# ดึงค่า Cookie ทั้งหมดเพื่อเช็คว่า Cookie Manager พร้อมทำงานแล้วหรือยัง
+cookies = cookie_manager.get_all()
+
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "username" not in st.session_state:
@@ -315,8 +318,9 @@ if "username" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = "user"
 
-# ตรวจสอบ Cookie ถ้ามีอยู่ให้เข้าสู่ระบบอัตโนมัติ
+# ตรวจสอบ Cookie ถ้ามีอยู่ให้ล็อกอินอัตโนมัติ
 saved_username = cookie_manager.get(cookie="drink_shop_user")
+
 if saved_username and not st.session_state.logged_in:
     st.session_state.logged_in = True
     st.session_state.username = saved_username
@@ -360,7 +364,7 @@ if not st.session_state.logged_in:
                         st.session_state.role = user_data[1] if user_data[1] else "user"
                         
                         # บันทึก Cookie จำไว้ 7 วัน
-                        cookie_manager.set("drink_shop_user", user_data[0], max_age=7*24*3600)
+                        cookie_manager.set("drink_shop_user", user_data[0], max_age=7*24*3600, key="set_user_cookie")
                         
                         st.success(f"🎉 ยินดีต้อนรับคุณ {st.session_state.username}!")
                         time.sleep(0.5)
@@ -410,7 +414,7 @@ else:
         st.caption(f"สถานะ: `{role_badge}`")
         
         if st.button("🚪 ออกจากระบบ", use_container_width=True):
-            cookie_manager.delete("drink_shop_user")
+            cookie_manager.delete("drink_shop_user", key="del_user_cookie")
             st.session_state.clear()
             st.rerun()
 
