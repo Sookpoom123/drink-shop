@@ -373,16 +373,18 @@ if not st.session_state.logged_in:
         with auth_tab2:
             with st.container():
                 st.write("")
+                
+                # ย้าย radio ออกมาอยู่นอก st.form เพื่อให้ระบบรีเฟรชเปลี่ยนหน้าทันทีเมื่อติ๊กเลือก
+                role_choice = st.radio(
+                    "เลือกสิทธิ์การใช้งาน:", 
+                    ["👤 พนักงานทั่วไป (User)", "👑 ผู้ดูแลระบบ (Admin)"], 
+                    key="reg_role_choice"
+                )
+
                 with st.form("register_form"):
                     reg_user_input = st.text_input("👤 ตั้งชื่อผู้ใช้งาน (Username)", key="reg_user")
                     reg_pass_input = st.text_input("🔒 ตั้งรหัสผ่าน (Password)", type="password", key="reg_pass")
                     reg_confirm_pass = st.text_input("🔁 ยืนยันรหัสผ่านอีกครั้ง", type="password", key="reg_confirm")
-                    
-                    role_choice = st.radio(
-                        "เลือกสิทธิ์การใช้งาน:", 
-                        ["👤 พนักงานทั่วไป (User)", "👑 ผู้ดูแลระบบ (Admin)"], 
-                        key="reg_role_choice"
-                    )
                     
                     # แสดงช่องกรอกรหัสลับเฉพาะเมื่อเลือกผู้ดูแลระบบ (Admin) เท่านั้น
                     secret_code_input = ""
