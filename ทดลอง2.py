@@ -19,12 +19,8 @@ ADMIN_SECRET_KEY = "3475"  # 🔑 รหัสลับสำหรับแต�
 PEARL_PRICE = 5.0           # 🧋 ราคาไข่มุก
 PEARL_COST = 1.0            # 🧋 ต้นทุนไข่มุก
 
-# --- จัดการ Cookie สำหรับคงสถานะ Login เมื่อกด Refresh ---
-@st.cache_resource
-def get_cookie_manager():
-    return stx.CookieManager(key="shop_cookie_mgr")
-
-cookie_manager = get_cookie_manager()
+# --- จัดการ Cookie สำหรับคงสถานะ Login (แก้ไขไม่ให้ขึ้นตัวหนังสือสีแดง) ---
+cookie_manager = stx.CookieManager()
 
 # --- รายการเมนูเริ่มต้น (68 เมนู) ---
 DEFAULT_MENU = {
@@ -234,22 +230,22 @@ def delete_sale_by_id(record_id):
 
 init_db()
 
-# --- ตรวจสอบการโหลด Cookie แบบรอโหลด ---
+# --- ระบบจัดการ Session State & Cookie ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.username = ""
     st.session_state.role = "user"
 
-# ดึงค่า Cookie
-saved_user = cookie_manager.get('auth_user')
-saved_role = cookie_manager.get('auth_role')
+# ดึง Cookie ที่เคยบันทึกไว้
+cookies = cookie_manager.get_all()
 
-# ถ้าไม่ได้ล็อกอินอยู่ แต่มี Cookie บันทึกไว้ ให้กู้คืนสถานะการล็อกอิน
-if not st.session_state.logged_in and saved_user:
-    st.session_state.logged_in = True
-    st.session_state.username = saved_user
-    st.session_state.role = saved_role if saved_role else "user"
-    st.rerun()
+if not st.session_state.logged_in and cookies:
+    saved_user = cookies.get('auth_user')
+    saved_role = cookies.get('auth_role')
+    if saved_user:
+        st.session_state.logged_in = True
+        st.session_state.username = saved_user
+        st.session_state.role = saved_role if saved_role else "user"
 
 current_menu = get_menu_from_db()
 
@@ -348,7 +344,7 @@ if not st.session_state.logged_in:
                         st.session_state.username = user_data[0]
                         st.session_state.role = user_data[1] if user_data[1] else "user"
                         
-                        # บันทึกค่าลงใน Cookie
+                        # บันทึก Cookie
                         cookie_manager.set('auth_user', user_data[0])
                         cookie_manager.set('auth_role', user_data[1] if user_data[1] else "user")
                         
@@ -459,9 +455,6 @@ else:
         """, 
         unsafe_allow_html=True
     )
-
-    if st.button("☰ เปิด/ปิด เมนูด้านซ้าย ( Sidebar )", key="toggle_sidebar_btn"):
-        st.info("💡 คุณสามารถกดปุ่มลูกศร `>` ที่มุมบนซ้ายสุดของหน้าจอเพื่อเปิด/ปิดเมนูด้านซ้ายได้เลยครับ")
 
     # --- ส่วนที่ 1: ตารางราคา ---
     menu_count = len(current_menu)
