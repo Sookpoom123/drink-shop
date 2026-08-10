@@ -20,15 +20,8 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* ซ่อนปุ่ม GitHub, ปุ่ม Edit, ปุ่ม Star และแถบ Toolbar ด้านบนทั้งหมด */
-    [data-testid="stToolbar"] {
-        display: none !important;
-    }
-    /* ซ่อน Header เมนูด้านบน */
-    header[data-testid="stHeader"] {
-        display: none !important;
-    }
-    
+    [data-testid="stToolbar"] { display: none !important; }
+    header[data-testid="stHeader"] { display: none !important; }
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 
@@ -83,11 +76,10 @@ st.markdown(
 )
 
 DB_FILE = "sales_data.db"
-ADMIN_SECRET_KEY = "3475"  # 🔑 รหัสลับสำหรับแต่งตั้ง Admin
-PEARL_PRICE = 5.0           # 🧋 ราคาไข่มุก
-PEARL_COST = 1.0            # 🧋 ต้นทุนไข่มุก
+ADMIN_SECRET_KEY = "3475"
+PEARL_PRICE = 5.0
+PEARL_COST = 1.0
 
-# --- รายการเมนูเริ่มต้น (68 เมนู) ---
 DEFAULT_MENU = {
     "ชาดำเย็น": {"cost": 6.61, "price": 19},
     "ชามะนาว": {"cost": 7.65, "price": 19},
@@ -198,13 +190,11 @@ def init_db():
             price REAL
         )
     ''')
-    
     c.execute("SELECT COUNT(*) FROM menu_items")
     if c.fetchone()[0] == 0:
         for name, info in DEFAULT_MENU.items():
             c.execute("INSERT OR IGNORE INTO menu_items (name, cost, price) VALUES (?, ?, ?)", 
                       (name, info['cost'], info['price']))
-            
     conn.commit()
     conn.close()
 
@@ -304,12 +294,9 @@ def delete_sale_by_id(record_id):
 init_db()
 
 # ==========================================
-# 🍪 จัดการ Cookie สรุปสถานะการเข้าสู่ระบบ
+# 🍪 ระบบจัดการ Cookie + ตรวจสอบสถานะ ล็อกอิน
 # ==========================================
-cookie_manager = stx.CookieManager()
-
-# ดึงค่า Cookie ทั้งหมดเพื่อเช็คว่า Cookie Manager พร้อมทำงานแล้วหรือยัง
-cookies = cookie_manager.get_all()
+cookie_manager = stx.CookieManager(key="drink_shop_cookie_mgr")
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -318,13 +305,15 @@ if "username" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = "user"
 
-# ตรวจสอบ Cookie ถ้ามีอยู่ให้ล็อกอินอัตโนมัติ
-saved_username = cookie_manager.get(cookie="drink_shop_user")
+# ดึงค่าคุกกี้ที่บันทึกไว้
+saved_user = cookie_manager.get(cookie="drink_shop_user")
 
-if saved_username and not st.session_state.logged_in:
+# หากยังไม่ได้ล็อกอินใน Session แต่พบคุกกี้เดิม ให้ดึงสถานะเข้าสู่ระบบทันที
+if not st.session_state.logged_in and saved_user:
     st.session_state.logged_in = True
-    st.session_state.username = saved_username
-    st.session_state.role = get_user_role(saved_username)
+    st.session_state.username = saved_user
+    st.session_state.role = get_user_role(saved_user)
+    st.rerun()
 
 current_menu = get_menu_from_db()
 
@@ -363,8 +352,8 @@ if not st.session_state.logged_in:
                         st.session_state.username = user_data[0]
                         st.session_state.role = user_data[1] if user_data[1] else "user"
                         
-                        # บันทึก Cookie จำไว้ 7 วัน
-                        cookie_manager.set("drink_shop_user", user_data[0], max_age=7*24*3600, key="set_user_cookie")
+                        # บันทึกคุกกี้จำสถานะ 30 วัน
+                        cookie_manager.set("drink_shop_user", user_data[0], max_age=30*24*3600, key="set_cookie")
                         
                         st.success(f"🎉 ยินดีต้อนรับคุณ {st.session_state.username}!")
                         time.sleep(0.5)
@@ -414,7 +403,7 @@ else:
         st.caption(f"สถานะ: `{role_badge}`")
         
         if st.button("🚪 ออกจากระบบ", use_container_width=True):
-            cookie_manager.delete("drink_shop_user", key="del_user_cookie")
+            cookie_manager.delete("drink_shop_user", key="delete_cookie")
             st.session_state.clear()
             st.rerun()
 
