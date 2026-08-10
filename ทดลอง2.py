@@ -4,6 +4,7 @@ import sqlite3
 import hashlib
 from datetime import date
 import extra_streamlit_components as stx
+import time
 
 # --- ตั้งค่าหน้าตาเว็บไซต์ ---
 st.set_page_config(
@@ -19,7 +20,11 @@ PEARL_PRICE = 5.0           # 🧋 ราคาไข่มุก
 PEARL_COST = 1.0            # 🧋 ต้นทุนไข่มุก
 
 # --- จัดการ Cookie สำหรับคงสถานะ Login เมื่อกด Refresh ---
-cookie_manager = stx.CookieManager()
+@st.cache_resource
+def get_cookie_manager():
+    return stx.CookieManager(key="shop_cookie_mgr")
+
+cookie_manager = get_cookie_manager()
 
 # --- รายการเมนูเริ่มต้น (68 เมนู) ---
 DEFAULT_MENU = {
@@ -229,19 +234,22 @@ def delete_sale_by_id(record_id):
 
 init_db()
 
-# --- ตรวจสอบสถานะการเข้าสู่ระบบผ่าน Cookie ---
+# --- ตรวจสอบการโหลด Cookie แบบรอโหลด ---
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+    st.session_state.username = ""
+    st.session_state.role = "user"
+
+# ดึงค่า Cookie
 saved_user = cookie_manager.get('auth_user')
 saved_role = cookie_manager.get('auth_role')
 
-if "logged_in" not in st.session_state:
-    if saved_user and saved_role:
-        st.session_state.logged_in = True
-        st.session_state.username = saved_user
-        st.session_state.role = saved_role
-    else:
-        st.session_state.logged_in = False
-        st.session_state.username = ""
-        st.session_state.role = "user"
+# ถ้าไม่ได้ล็อกอินอยู่ แต่มี Cookie บันทึกไว้ ให้กู้คืนสถานะการล็อกอิน
+if not st.session_state.logged_in and saved_user:
+    st.session_state.logged_in = True
+    st.session_state.username = saved_user
+    st.session_state.role = saved_role if saved_role else "user"
+    st.rerun()
 
 current_menu = get_menu_from_db()
 
@@ -340,10 +348,12 @@ if not st.session_state.logged_in:
                         st.session_state.username = user_data[0]
                         st.session_state.role = user_data[1] if user_data[1] else "user"
                         
+                        # บันทึกค่าลงใน Cookie
                         cookie_manager.set('auth_user', user_data[0])
                         cookie_manager.set('auth_role', user_data[1] if user_data[1] else "user")
                         
                         st.success(f"🎉 ยินดีต้อนรับคุณ {st.session_state.username}!")
+                        time.sleep(0.5)
                         st.rerun()
                     else:
                         st.error("❌ ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง")
@@ -396,6 +406,7 @@ else:
             
             cookie_manager.delete('auth_user')
             cookie_manager.delete('auth_role')
+            time.sleep(0.5)
             st.rerun()
 
         st.divider()
