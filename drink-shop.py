@@ -290,7 +290,7 @@ def delete_sale_by_id(record_id):
 init_db()
 
 # ==========================================
-# 🔗 ระบบจัดการ Session + URL Query Parameters
+# 🔗 ระบบจัดการ Session (ตัดระบบอัตโนมัติเมื่อขึ้นวันใหม่)
 # ==========================================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -298,12 +298,29 @@ if "username" not in st.session_state:
     st.session_state.username = ""
 if "role" not in st.session_state:
     st.session_state.role = "user"
+if "login_date" not in st.session_state:
+    st.session_state.login_date = ""
 
-if not st.session_state.logged_in and "user" in st.query_params:
+today_str = str(date.today())
+
+# ตรวจสอบว่าข้ามวันหรือยัง ถ้าข้ามวันแล้วให้บังคับล็อกอินใหม่ทันที
+if st.session_state.logged_in and st.session_state.login_date != today_str:
+    st.session_state.clear()
+    st.query_params.clear()
+    st.rerun()
+
+# ตรวจสอบการจำค่าจาก URL (เฉพาะวันเดียวกันเท่านั้น)
+if not st.session_state.logged_in and "user" in st.query_params and "login_date" in st.query_params:
     saved_user = st.query_params["user"]
-    st.session_state.logged_in = True
-    st.session_state.username = saved_user
-    st.session_state.role = get_user_role(saved_user)
+    saved_date = st.query_params["login_date"]
+    
+    if saved_date == today_str:
+        st.session_state.logged_in = True
+        st.session_state.username = saved_user
+        st.session_state.role = get_user_role(saved_user)
+        st.session_state.login_date = saved_date
+    else:
+        st.query_params.clear()
 
 current_menu = get_menu_from_db()
 
@@ -341,8 +358,11 @@ if not st.session_state.logged_in:
                         st.session_state.logged_in = True
                         st.session_state.username = user_data[0]
                         st.session_state.role = user_data[1] if user_data[1] else "user"
+                        st.session_state.login_date = str(date.today())
                         
+                        # แนบชื่อผู้ใช้และวันที่ล็อกอินไว้ใน URL
                         st.query_params["user"] = user_data[0]
+                        st.query_params["login_date"] = str(date.today())
                         
                         st.success(f"🎉 ยินดีต้อนรับคุณ {st.session_state.username}!")
                         time.sleep(0.3)
@@ -358,10 +378,18 @@ if not st.session_state.logged_in:
                     reg_pass_input = st.text_input("🔒 ตั้งรหัสผ่าน (Password)", type="password", key="reg_pass")
                     reg_confirm_pass = st.text_input("🔁 ยืนยันรหัสผ่านอีกครั้ง", type="password", key="reg_confirm")
                     
-                    role_choice = st.radio("เลือกสิทธิ์การใช้งาน:", ["👤 พนักงานทั่วไป (User)", "👑 ผู้ดูแลระบบ (Admin)"], key="reg_role_choice")
-                    secret_code_input = st.text_input("🔑 รหัสลับแต่งตั้ง Admin", type="password", placeholder="ใส่เฉพาะเมื่อเลือกสิทธิ์ Admin", key="reg_secret")
-                    st.write("")
+                    role_choice = st.radio(
+                        "เลือกสิทธิ์การใช้งาน:", 
+                        ["👤 พนักงานทั่วไป (User)", "👑 ผู้ดูแลระบบ (Admin)"], 
+                        key="reg_role_choice"
+                    )
                     
+                    # แสดงช่องกรอกรหัสลับเฉพาะเมื่อเลือกผู้ดูแลระบบ (Admin) เท่านั้น
+                    secret_code_input = ""
+                    if role_choice == "👑 ผู้ดูแลระบบ (Admin)":
+                        secret_code_input = st.text_input("🔑 รหัสลับแต่งตั้ง Admin", type="password", key="reg_secret")
+
+                    st.write("")
                     submit_reg = st.form_submit_button("✨ สมัครสมาชิก", use_container_width=True)
 
                 if submit_reg:
