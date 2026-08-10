@@ -4,7 +4,6 @@ import sqlite3
 import hashlib
 from datetime import date
 import time
-import extra_streamlit_components as stx
 
 # --- ตั้งค่าหน้าตาเว็บไซต์ ---
 st.set_page_config(
@@ -294,10 +293,8 @@ def delete_sale_by_id(record_id):
 init_db()
 
 # ==========================================
-# 🍪 ระบบจัดการ Cookie + ตรวจสอบสถานะ ล็อกอิน
+# 🔗 ระบบจัดการ Session + URL Query Parameters
 # ==========================================
-cookie_manager = stx.CookieManager(key="drink_shop_cookie_mgr")
-
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "username" not in st.session_state:
@@ -305,15 +302,12 @@ if "username" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = "user"
 
-# ดึงค่าคุกกี้ที่บันทึกไว้
-saved_user = cookie_manager.get(cookie="drink_shop_user")
-
-# หากยังไม่ได้ล็อกอินใน Session แต่พบคุกกี้เดิม ให้ดึงสถานะเข้าสู่ระบบทันที
-if not st.session_state.logged_in and saved_user:
+# หากกด Refresh แต่มีค่า user บันทึกไว้ใน URL ให้รักษาสถานะเข้าสู่ระบบไว้
+if not st.session_state.logged_in and "user" in st.query_params:
+    saved_user = st.query_params["user"]
     st.session_state.logged_in = True
     st.session_state.username = saved_user
     st.session_state.role = get_user_role(saved_user)
-    st.rerun()
 
 current_menu = get_menu_from_db()
 
@@ -352,11 +346,11 @@ if not st.session_state.logged_in:
                         st.session_state.username = user_data[0]
                         st.session_state.role = user_data[1] if user_data[1] else "user"
                         
-                        # บันทึกคุกกี้จำสถานะ 30 วัน
-                        cookie_manager.set("drink_shop_user", user_data[0], max_age=30*24*3600, key="set_cookie")
+                        # บันทึกสถานะไว้ใน URL parameter
+                        st.query_params["user"] = user_data[0]
                         
                         st.success(f"🎉 ยินดีต้อนรับคุณ {st.session_state.username}!")
-                        time.sleep(0.5)
+                        time.sleep(0.3)
                         st.rerun()
                     else:
                         st.error("❌ ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง")
@@ -403,7 +397,7 @@ else:
         st.caption(f"สถานะ: `{role_badge}`")
         
         if st.button("🚪 ออกจากระบบ", use_container_width=True):
-            cookie_manager.delete("drink_shop_user", key="delete_cookie")
+            st.query_params.clear()
             st.session_state.clear()
             st.rerun()
 
