@@ -13,6 +13,74 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ==========================================
+# 🔒 ซ่อนปุ่ม GitHub, ปุ่ม Edit และ Toolbar ด้านบน
+# ==========================================
+st.markdown(
+    """
+    <style>
+    /* ซ่อนปุ่ม GitHub, ปุ่ม Edit, ปุ่ม Star และแถบ Toolbar ด้านบนทั้งหมด */
+    [data-testid="stToolbar"] {
+        display: none !important;
+    }
+    /* ซ่อน Header เมนูด้านบน */
+    header[data-testid="stHeader"] {
+        display: none !important;
+    }
+    
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+
+    .stApp {
+        background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 50%, #A1C4FD 100%) !important;
+    }
+
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #FFE29F 0%, #FFAE34 100%) !important;
+    }
+
+    .header-card {
+        background: linear-gradient(135deg, #FFF6B7 0%, #F68084 100%) !important;
+        padding: 25px;
+        border-radius: 24px;
+        box-shadow: 0 10px 25px rgba(255, 71, 126, 0.2);
+        border: 3px solid #FF5252;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    div[data-testid="stForm"], div[data-testid="stExpander"], div[data-testid="stVerticalBlock"] > div[style*="background-color"] {
+        background-color: #FFF9C4 !important;
+        border-radius: 18px !important;
+        border: 2px solid #FFD54F !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important;
+    }
+
+    div.stButton > button, div.stFormSubmitButton > button {
+        background: linear-gradient(90deg, #FF512F 0%, #DD2476 100%) !important;
+        color: white !important;
+        border-radius: 14px !important;
+        font-weight: bold !important;
+        font-size: 16px !important;
+        height: 50px !important;
+        border: none !important;
+        box-shadow: 0 4px 15px rgba(221, 36, 118, 0.4) !important;
+        transition: all 0.3s ease !important;
+    }
+    div.stButton > button:hover, div.stFormSubmitButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(221, 36, 118, 0.6) !important;
+    }
+
+    div[data-baseweb="input"] {
+        background-color: #FFFFFF !important;
+        border-radius: 12px !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 DB_FILE = "sales_data.db"
 ADMIN_SECRET_KEY = "3475"  # 🔑 รหัสลับสำหรับแต่งตั้ง Admin
 PEARL_PRICE = 5.0           # 🧋 ราคาไข่มุก
@@ -226,7 +294,7 @@ def delete_sale_by_id(record_id):
 
 init_db()
 
-# --- ระบบจัดการ Session State (เสถียร 100% บนมือถือ) ---
+# --- ระบบจัดการ Session State ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "username" not in st.session_state:
@@ -235,66 +303,6 @@ if "role" not in st.session_state:
     st.session_state.role = "user"
 
 current_menu = get_menu_from_db()
-
-# ==========================================
-# 🎨 ปรับแต่งธีมสีสดใส (CSS Overrides)
-# ==========================================
-st.markdown(
-    """
-    <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: visible !important;}
-
-    .stApp {
-        background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 50%, #A1C4FD 100%) !important;
-    }
-
-    section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #FFE29F 0%, #FFAE34 100%) !important;
-    }
-
-    .header-card {
-        background: linear-gradient(135deg, #FFF6B7 0%, #F68084 100%) !important;
-        padding: 25px;
-        border-radius: 24px;
-        box-shadow: 0 10px 25px rgba(255, 71, 126, 0.2);
-        border: 3px solid #FF5252;
-        text-align: center;
-        margin-bottom: 20px;
-    }
-
-    div[data-testid="stForm"], div[data-testid="stExpander"], div[data-testid="stVerticalBlock"] > div[style*="background-color"] {
-        background-color: #FFF9C4 !important;
-        border-radius: 18px !important;
-        border: 2px solid #FFD54F !important;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important;
-    }
-
-    div.stButton > button, div.stFormSubmitButton > button {
-        background: linear-gradient(90deg, #FF512F 0%, #DD2476 100%) !important;
-        color: white !important;
-        border-radius: 14px !important;
-        font-weight: bold !important;
-        font-size: 16px !important;
-        height: 50px !important;
-        border: none !important;
-        box-shadow: 0 4px 15px rgba(221, 36, 118, 0.4) !important;
-        transition: all 0.3s ease !important;
-    }
-    div.stButton > button:hover, div.stFormSubmitButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(221, 36, 118, 0.6) !important;
-    }
-
-    div[data-baseweb="input"] {
-        background-color: #FFFFFF !important;
-        border-radius: 12px !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
 
 # ==========================================
 # 1. หน้าเข้าสู่ระบบ / สมัครสมาชิก
