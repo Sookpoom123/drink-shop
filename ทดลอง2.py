@@ -4,6 +4,7 @@ import sqlite3
 import hashlib
 from datetime import date
 import time
+import extra_streamlit_components as stx
 
 # --- ตั้งค่าหน้าตาเว็บไซต์ ---
 st.set_page_config(
@@ -254,6 +255,14 @@ def login_user(username, password):
     conn.close()
     return data
 
+def get_user_role(username):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('SELECT role FROM users WHERE username = ?', (username,))
+    data = c.fetchone()
+    conn.close()
+    return data[0] if data else "user"
+
 def get_all_users():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -294,13 +303,24 @@ def delete_sale_by_id(record_id):
 
 init_db()
 
-# --- ระบบจัดการ Session State ---
+# ==========================================
+# 🍪 จัดการ Cookie สรุปสถานะการเข้าสู่ระบบ
+# ==========================================
+cookie_manager = stx.CookieManager()
+
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "username" not in st.session_state:
     st.session_state.username = ""
 if "role" not in st.session_state:
     st.session_state.role = "user"
+
+# ตรวจสอบ Cookie ถ้ามีอยู่ให้เข้าสู่ระบบอัตโนมัติ
+saved_username = cookie_manager.get(cookie="drink_shop_user")
+if saved_username and not st.session_state.logged_in:
+    st.session_state.logged_in = True
+    st.session_state.username = saved_username
+    st.session_state.role = get_user_role(saved_username)
 
 current_menu = get_menu_from_db()
 
@@ -338,8 +358,12 @@ if not st.session_state.logged_in:
                         st.session_state.logged_in = True
                         st.session_state.username = user_data[0]
                         st.session_state.role = user_data[1] if user_data[1] else "user"
+                        
+                        # บันทึก Cookie จำไว้ 7 วัน
+                        cookie_manager.set("drink_shop_user", user_data[0], max_age=7*24*3600)
+                        
                         st.success(f"🎉 ยินดีต้อนรับคุณ {st.session_state.username}!")
-                        time.sleep(0.3)
+                        time.sleep(0.5)
                         st.rerun()
                     else:
                         st.error("❌ ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง")
@@ -386,6 +410,7 @@ else:
         st.caption(f"สถานะ: `{role_badge}`")
         
         if st.button("🚪 ออกจากระบบ", use_container_width=True):
+            cookie_manager.delete("drink_shop_user")
             st.session_state.clear()
             st.rerun()
 
