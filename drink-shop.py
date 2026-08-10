@@ -1,9 +1,9 @@
-import streamlit as st
-import pandas as pd
-import sqlite3
 import hashlib
-from datetime import date
+import sqlite3
 import time
+from datetime import datetime, date
+import pandas as pd
+import streamlit as st
 
 # --- ตั้งค่าหน้าตาเว็บไซต์ ---
 st.set_page_config(
@@ -19,7 +19,6 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* ซ่อนเฉพาะเครื่องมือ Streamlit และ Footer */
     [data-testid="stToolbar"] { display: none !important; }
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
@@ -176,9 +175,16 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY,
             password TEXT,
-            role TEXT DEFAULT 'user'
+            role TEXT DEFAULT 'user',
+            last_active TEXT
         )
     ''')
+    # เพิ่มคอลัมน์ last_active หาก DB เดิมยังไม่มี
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN last_active TEXT")
+    except sqlite3.OperationalError:
+        pass
+
     c.execute('''
         CREATE TABLE IF NOT EXISTS menu_items (
             name TEXT PRIMARY KEY,
@@ -193,6 +199,16 @@ def init_db():
                       (name, info['cost'], info['price']))
     conn.commit()
     conn.close()
+
+def update_user_activity(username):
+    """ อัปเดตเวลาเคลื่อนไหวล่าสุดของผู้ใช้งาน """
+    if username:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        c.execute("UPDATE users SET last_active = ? WHERE username = ?", (now_str, username))
+        conn.commit()
+        conn.close()
 
 def get_menu_from_db():
     conn = sqlite3.connect(DB_FILE)
@@ -222,9 +238,10 @@ def delete_menu_item_db(name):
 def add_user(username, password, role='user'):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     try:
-        c.execute('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', 
-                  (username, make_hashes(password), role))
+        c.execute('INSERT INTO users (username, password, role, last_active) VALUES (?, ?, ?, ?)', 
+                  (username, make_hashes(password), role, now_str))
         conn.commit()
         conn.close()
         return True
@@ -249,18 +266,49 @@ def get_user_role(username):
     conn.close()
     return data[0] if data else "user"
 
-def get_all_users():
+def get_all_users_with_status():
+    """ ดึงรายชื่อผู้ใช้ทั้งหมดพร้อมเช็กสถานะ Online/Offline (ใช้งานภายใน 5 นาทีถือว่า Online) """
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute('SELECT username, role FROM users')
-    users = c.fetchall()
+    c.execute('SELECT username, role, last_active FROM users')
+    rows = c.fetchall()
     conn.close()
-    return users
+    
+    users_status = []
+    now = datetime.now()
+    
+    for username, role, last_active in rows:
+        is_online = False
+        if last_active:
+            try:
+                last_time = datetime.strptime(last_active, "%Y-%m-%d %H:%M:%S")
+                # ถ้าใช้งานล่าสุดไม่เกิน 5 นาที (300 วินาที) ถือว่า Online
+                if (now - last_time).total_seconds() < 300:
+                    is_online = True
+            except ValueError:
+                pass
+        
+        status_str = "🟢 Online" if is_online else "⚪ Offline"
+        users_status.append({
+            "ผู้ใช้งาน": username,
+            "สิทธิ์": role.upper(),
+            "สถานะ": status_str,
+            "ใช้งานล่าสุด": last_active if last_active else "ไม่ระบุ"
+        })
+    return users_status
 
 def delete_user(username):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('DELETE FROM users WHERE username = ?', (username,))
+    conn.commit()
+    conn.close()
+
+def set_user_offline(username):
+    """ ล้างเวลาใช้งานเมื่อกดออกจากระบบ """
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("UPDATE users SET last_active = NULL WHERE username = ?", (username,))
     conn.commit()
     conn.close()
 
@@ -290,7 +338,7 @@ def delete_sale_by_id(record_id):
 init_db()
 
 # ==========================================
-# 🔗 ระบบจัดการ Session (ตัดระบบอัตโนมัติเมื่อขึ้นวันใหม่)
+# 🔗 ระบบจัดการ Session
 # ==========================================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -303,13 +351,14 @@ if "login_date" not in st.session_state:
 
 today_str = str(date.today())
 
-# ตรวจสอบว่าข้ามวันหรือยัง ถ้าข้ามวันแล้วให้บังคับล็อกอินใหม่ทันที
+# ตรวจสอบข้ามวัน บังคับล็อกอินใหม่
 if st.session_state.logged_in and st.session_state.login_date != today_str:
+    set_user_offline(st.session_state.username)
     st.session_state.clear()
     st.query_params.clear()
     st.rerun()
 
-# ตรวจสอบการจำค่าจาก URL (เฉพาะวันเดียวกันเท่านั้น)
+# ตรวจสอบการจำค่าจาก URL
 if not st.session_state.logged_in and "user" in st.query_params and "login_date" in st.query_params:
     saved_user = st.query_params["user"]
     saved_date = st.query_params["login_date"]
@@ -321,6 +370,10 @@ if not st.session_state.logged_in and "user" in st.query_params and "login_date"
         st.session_state.login_date = saved_date
     else:
         st.query_params.clear()
+
+# อัปเดตสถานะการใช้งานจริง ณ ปัจจุบัน
+if st.session_state.logged_in:
+    update_user_activity(st.session_state.username)
 
 current_menu = get_menu_from_db()
 
@@ -360,7 +413,8 @@ if not st.session_state.logged_in:
                         st.session_state.role = user_data[1] if user_data[1] else "user"
                         st.session_state.login_date = str(date.today())
                         
-                        # แนบชื่อผู้ใช้และวันที่ล็อกอินไว้ใน URL
+                        update_user_activity(user_data[0])
+                        
                         st.query_params["user"] = user_data[0]
                         st.query_params["login_date"] = str(date.today())
                         
@@ -373,8 +427,6 @@ if not st.session_state.logged_in:
         with auth_tab2:
             with st.container():
                 st.write("")
-                
-                # ย้าย radio ออกมาอยู่นอก st.form เพื่อให้ระบบรีเฟรชเปลี่ยนหน้าทันทีเมื่อติ๊กเลือก
                 role_choice = st.radio(
                     "เลือกสิทธิ์การใช้งาน:", 
                     ["👤 พนักงานทั่วไป (User)", "👑 ผู้ดูแลระบบ (Admin)"], 
@@ -386,7 +438,6 @@ if not st.session_state.logged_in:
                     reg_pass_input = st.text_input("🔒 ตั้งรหัสผ่าน (Password)", type="password", key="reg_pass")
                     reg_confirm_pass = st.text_input("🔁 ยืนยันรหัสผ่านอีกครั้ง", type="password", key="reg_confirm")
                     
-                    # แสดงช่องกรอกรหัสลับเฉพาะเมื่อเลือกผู้ดูแลระบบ (Admin) เท่านั้น
                     secret_code_input = ""
                     if role_choice == "👑 ผู้ดูแลระบบ (Admin)":
                         secret_code_input = st.text_input("🔑 รหัสลับแต่งตั้ง Admin", type="password", key="reg_secret")
@@ -412,10 +463,9 @@ if not st.session_state.logged_in:
                             st.error("❌ ชื่อผู้ใช้งานนี้มีในระบบแล้ว")
 
 # ==========================================
-# 2. หน้าจอหลักหลังเข้าสู่ระบบสำเร็จ (อยู่บน Main Page ทั้งหมด)
+# 2. หน้าจอหลักหลังเข้าสู่ระบบสำเร็จ
 # ==========================================
 else:
-    # --- ส่วนหัวของหน้าหลัก + แถบสถานะผู้ใช้งาน ---
     role_badge = "👑 ADMIN" if st.session_state.role == "admin" else "👤 USER"
     
     st.markdown(
@@ -428,21 +478,21 @@ else:
         unsafe_allow_html=True
     )
 
-    # แถบแสดงสถานะผู้ใช้งาน และปุ่มออกจากระบบบนหน้าหลัก
     col_user_info, col_logout_btn = st.columns([2, 1])
     with col_user_info:
         st.markdown(f"👤 **ผู้ใช้งาน:** `{st.session_state.username}` | สถานะ: `{role_badge}`")
     with col_logout_btn:
         if st.button("🚪 ออกจากระบบ", use_container_width=True, key="main_logout"):
+            set_user_offline(st.session_state.username)
             st.query_params.clear()
             st.session_state.clear()
             st.rerun()
 
     st.divider()
 
-    # --- ส่วนจัดการระบบ (จัดการเมนู & สิทธิ์สมาชิก) บนหน้าหลัก ---
+    # --- ส่วนจัดการระบบ ---
     with st.expander("⚙️ **จัดการระบบ (เพิ่ม/ลบเมนู & จัดการสมาชิก)**", expanded=False):
-        tab_add_menu, tab_del_menu, tab_users = st.tabs(["➕ เพิ่มเมนูใหม่", "🗑️ ลบเมนู (Admin)", "👥 จัดการสมาชิก (Admin)"])
+        tab_add_menu, tab_del_menu, tab_users = st.tabs(["➕ เพิ่มเมนูใหม่", "🗑️ ลบเมนู (Admin)", "👥 จัดการสมาชิก & สถานะ Online (Admin)"])
 
         with tab_add_menu:
             new_name = st.text_input("ชื่อเมนูใหม่", key="m_add_name")
@@ -470,16 +520,18 @@ else:
 
         with tab_users:
             if st.session_state.role == "admin":
-                all_users = get_all_users()
-                other_users = [f"{u[0]} ({u[1].upper()})" for u in all_users if u[0] != st.session_state.username]
+                st.write("🟢 **ตารางแสดงสถานะผู้ใช้งานในระบบ**")
+                all_users_status = get_all_users_with_status()
+                st.dataframe(pd.DataFrame(all_users_status), use_container_width=True)
+                
+                st.write("---")
+                other_users = [u["ผู้ใช้งาน"] for u in all_users_status if u["ผู้ใช้งาน"] != st.session_state.username]
                 
                 if other_users:
                     selected_user_str = st.selectbox("เลือกบัญชีที่ต้องการลบ", other_users, key="m_del_user")
-                    target_username = selected_user_str.split(" ")[0]
-                    
                     if st.button("❌ ลบบัญชีนี้", key="btn_del_usr", use_container_width=True):
-                        delete_user(target_username)
-                        st.success(f"ลบบัญชี '{target_username}' สำเร็จ!")
+                        delete_user(selected_user_str)
+                        st.success(f"ลบบัญชี '{selected_user_str}' สำเร็จ!")
                         st.rerun()
                 else:
                     st.info("ไม่มีสมาชิกอื่นในระบบ")
