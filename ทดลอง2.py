@@ -6,8 +6,8 @@ from datetime import date
 
 # --- ตั้งค่าหน้าตาเว็บไซต์ ---
 st.set_page_config(
-    page_title="ระบบบันทึกยอดขายร้านน้ำ", 
-    page_icon="🥤", 
+    page_title="ร้านน้ำสร้างตัว 🧋", 
+    page_icon="🧋", 
     layout="centered"
 )
 
@@ -16,9 +16,9 @@ ADMIN_SECRET_KEY = "3475"  # 🔑 รหัสลับสำหรับแต�
 PEARL_PRICE = 5.0           # 🧋 ราคาไข่มุก
 PEARL_COST = 1.0            # 🧋 ต้นทุนไข่มุก
 
-# --- รายการเมนูทั้งหมดจากรูปภาพ (68 เมนู) ---
+# --- รายการเมนูทั้งหมด (68 เมนู) ---
 DEFAULT_MENU = {
-    # --- รูปที่ 1: ชาใส / ชาผลไม้ / กาแฟ / นมสดรสต่างๆ ---
+    # --- ชาใส / ชาผลไม้ / กาแฟ / นมสดรสต่างๆ ---
     "ชาดำเย็น": {"cost": 6.61, "price": 19},
     "ชามะนาว": {"cost": 7.65, "price": 19},
     "ชาเขียวมะนาว": {"cost": 8.45, "price": 19},
@@ -47,7 +47,7 @@ DEFAULT_MENU = {
     "แคนตาลูปนมสด": {"cost": 11.49, "price": 25},
     "ช็อคโกแลตนมสด": {"cost": 14.64, "price": 25},
 
-    # --- รูปที่ 2: เมนูปั่น (Blended Drinks) ---
+    # --- เมนูปั่น ---
     "ชาแดงปั่น": {"cost": 14.72, "price": 35},
     "ชาเขียวปั่น": {"cost": 15.73, "price": 35},
     "ชาไต้หวันปั่น": {"cost": 13.04, "price": 35},
@@ -77,7 +77,7 @@ DEFAULT_MENU = {
     "ผงกล้วย": {"cost": 14.77, "price": 35},
     "ผงเผือก": {"cost": 15.25, "price": 35},
 
-    # --- รูปที่ 3: ชานม / ชาเขียว / ชานมเย็น ---
+    # --- ชานม / ชาเขียว / ชานมเย็น ---
     "ชานมไต้หวัน": {"cost": 11.12, "price": 19},
     "ชานมผลไม้": {"cost": 11.89, "price": 25},
     "ชานมโกโก้": {"cost": 12.13, "price": 25},
@@ -95,7 +95,7 @@ DEFAULT_MENU = {
     "ชาแดงน้ำผึ้งมะนาว": {"cost": 11.31, "price": 25},
     "น้ำผึ้งมะนาว": {"cost": 10.07, "price": 19},
 
-    # --- รูปที่ 4: เมนูบ๊วย ---
+    # --- เมนูบ๊วย ---
     "ชาลูกบ๊วย": {"cost": 9.03, "price": 24},
     "น้ำลูกบ๊วย": {"cost": 6.95, "price": 24},
     "น้ำลูกบ๊วยโซดา": {"cost": 11.94, "price": 24},
@@ -217,64 +217,94 @@ if "menu" not in st.session_state or len(st.session_state.menu) != len(DEFAULT_M
     st.session_state.menu = DEFAULT_MENU.copy()
 
 # ==========================================
+# 🎨 ปรับแต่งธีมสีสดใส (CSS Overrides)
+# ==========================================
+st.markdown(
+    """
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+
+    /* 1. พื้นหลังหลักทั้งหน้าเว็บเป็นสีไล่เฉดสดใส */
+    .stApp {
+        background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 50%, #A1C4FD 100%) !important;
+    }
+
+    /* 2. พื้นหลังแถบข้าง Sidebar */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #FFE29F 0%, #FFAE34 100%) !important;
+    }
+
+    /* 3. การ์ดหัวข้อหลัก */
+    .header-card {
+        background: linear-gradient(135deg, #FFF6B7 0%, #F68084 100%) !important;
+        padding: 25px;
+        border-radius: 24px;
+        box-shadow: 0 10px 25px rgba(255, 71, 126, 0.2);
+        border: 3px solid #FF5252;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    /* 4. กล่องเนื้อหาและฟอร์มสีพาสเทลสดใส */
+    div[data-testid="stForm"], div[data-testid="stExpander"], div[data-testid="stVerticalBlock"] > div[style*="background-color"] {
+        background-color: #FFF9C4 !important;
+        border-radius: 18px !important;
+        border: 2px solid #FFD54F !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important;
+    }
+
+    /* 5. ปุ่มกดสีส้มชมพูสะดุดตา */
+    div.stButton > button, div.stFormSubmitButton > button {
+        background: linear-gradient(90deg, #FF512F 0%, #DD2476 100%) !important;
+        color: white !important;
+        border-radius: 14px !important;
+        font-weight: bold !important;
+        font-size: 16px !important;
+        height: 50px !important;
+        border: none !important;
+        box-shadow: 0 4px 15px rgba(221, 36, 118, 0.4) !important;
+        transition: all 0.3s ease !important;
+    }
+    div.stButton > button:hover, div.stFormSubmitButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(221, 36, 118, 0.6) !important;
+    }
+
+    /* 6. ช่องกรอกข้อมูล */
+    div[data-baseweb="input"] {
+        background-color: #FFFFFF !important;
+        border-radius: 12px !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# ==========================================
 # 1. หน้าเข้าสู่ระบบ / สมัครสมาชิก
 # ==========================================
 if not st.session_state.logged_in:
-    st.markdown(
-        """
-        <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-        
-        .header-card {
-            background: linear-gradient(135deg, #FFF0F5 0%, #FFFFFF 100%);
-            padding: 25px;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(216, 27, 96, 0.08);
-            border: 1px solid #FFD1DC;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        
-        div.stButton > button, div.stFormSubmitButton > button {
-            background: linear-gradient(90deg, #FF477E 0%, #FF5A36 100%) !important;
-            color: white !important;
-            border-radius: 12px !important;
-            font-weight: bold !important;
-            font-size: 16px !important;
-            height: 48px !important;
-            border: none !important;
-            box-shadow: 0 4px 12px rgba(255, 71, 126, 0.25) !important;
-            transition: all 0.3s ease !important;
-        }
-        div.stButton > button:hover, div.stFormSubmitButton > button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(255, 71, 126, 0.4) !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
 
     st.markdown(
         """
         <div class="header-card">
-            <img src="https://cdn-icons-png.flaticon.com/512/3054/3054889.png" width="85" style="margin-bottom: 8px;">
-            <h1 style="color: #D81B60; font-size: 26px; font-weight: 800; margin: 0;">ร้านน้ำชาพาเพลิน 🥤</h1>
-            <p style="color: #880E4F; font-size: 14px; margin-top: 5px;">ระบบบันทึกยอดขาย & สรุปกำไรประจำวัน</p>
+            <img src="https://cdn-icons-png.flaticon.com/512/3081/3081162.png" width="95" style="margin-bottom: 8px;">
+            <h1 style="color: #C2185B; font-size: 30px; font-weight: 900; margin: 0; text-shadow: 1px 1px 2px #FFF;">ร้านน้ำสร้างตัว 🧋</h1>
+            <p style="color: #880E4F; font-size: 15px; font-weight: bold; margin-top: 5px;">ระบบบันทึกยอดขาย & สรุปกำไรประจำวัน</p>
         </div>
         """, 
         unsafe_allow_html=True
     )
     
-    col1, col2, col3 = st.columns([0.2, 2, 0.2])
+    col1, col2, col3 = st.columns([0.1, 2, 0.1])
     
     with col2:
         auth_tab1, auth_tab2 = st.tabs(["🔑 เข้าสู่ระบบ (Login)", "📝 สมัครสมาชิก (Register)"])
 
         with auth_tab1:
-            with st.container(border=True):
+            with st.container():
                 st.write("")
                 login_user_input = st.text_input("👤 ชื่อผู้ใช้งาน (Username)", key="login_user")
                 login_pass_input = st.text_input("🔒 รหัสผ่าน (Password)", type="password", key="login_pass")
@@ -292,7 +322,7 @@ if not st.session_state.logged_in:
                         st.error("❌ ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง")
 
         with auth_tab2:
-            with st.container(border=True):
+            with st.container():
                 st.write("")
                 with st.form("register_form"):
                     reg_user_input = st.text_input("👤 ตั้งชื่อผู้ใช้งาน (Username)", key="reg_user")
@@ -343,7 +373,7 @@ else:
         
         if st.button("🔄 รีเซ็ตเมนูทั้งหมด (คืนค่าจากรูปภาพ)", use_container_width=True):
             st.session_state.menu = DEFAULT_MENU.copy()
-            st.success("คืนค่าเมนูทั้งหมดจากรูปภาพเรียบร้อย!")
+            st.success("คืนค่าเมนูทั้งหมดเรียบร้อย!")
             st.rerun()
 
         with st.expander("➕ เพิ่มเมนูใหม่"):
@@ -383,12 +413,12 @@ else:
                 else:
                     st.info("ไม่มีสมาชิกอื่นในระบบ")
 
-    # Header
+    # Header หลัก
     st.markdown(
         """
-        <div style="background-color: #E8F5E9; padding: 15px; border-radius: 12px; border-left: 6px solid #2E7D32; margin-bottom: 20px;">
-            <h2 style="color: #1B5E20; margin: 0; font-size: 22px;">🥤 ระบบบันทึกยอดขาย & กำไร</h2>
-            <p style="color: #388E3C; margin: 5px 0 0 0; font-size: 14px;">จัดการยอดขายร้านน้ำครอบครัว สะดวก รวดเร็ว สรุปผลทันที</p>
+        <div style="background: linear-gradient(135deg, #FFE29F 0%, #FF719A 100%); padding: 18px; border-radius: 18px; border: 2px solid #FF5252; margin-bottom: 20px; text-align: center;">
+            <h2 style="color: #7B1FA2; margin: 0; font-size: 26px; font-weight: bold;">🧋 ร้านน้ำสร้างตัว</h2>
+            <p style="color: #4A148C; margin: 5px 0 0 0; font-size: 15px; font-weight: 500;">ระบบบันทึกยอดขาย & กำไรประจำวัน</p>
         </div>
         """, 
         unsafe_allow_html=True
@@ -420,7 +450,7 @@ else:
             st.dataframe(pd.DataFrame(menu_data), use_container_width=True, height=250)
 
     # --- ส่วนที่ 2: บันทึกการขาย ---
-    with st.container(border=True):
+    with st.container():
         st.subheader("🛒 บันทึกรายการขาย")
         selected_date = st.date_input("📅 วันที่ทำรายการ", value=date.today())
 
@@ -454,8 +484,8 @@ else:
 
                 st.markdown(
                     f"""
-                    <div style="background-color: #F1F8E9; padding: 10px; border-radius: 8px; margin: 10px 0; text-align: center;">
-                        <span style="font-size: 16px; color: #333;">💵 ยอดขาย: <b>{total_price:,} บาท</b> | 📈 กำไรสุทธิ: <b style="color: #2E7D32;">{total_profit:,.2f} บาท</b></span>
+                    <div style="background-color: #FFF59D; padding: 12px; border-radius: 10px; margin: 10px 0; text-align: center; border: 1px solid #FBC02D;">
+                        <span style="font-size: 17px; color: #333;">💵 ยอดขาย: <b>{total_price:,} บาท</b> | 📈 กำไรสุทธิ: <b style="color: #2E7D32;">{total_profit:,.2f} บาท</b></span>
                     </div>
                     """, 
                     unsafe_allow_html=True
