@@ -13,6 +13,8 @@ st.set_page_config(
 
 DB_FILE = "sales_data.db"
 ADMIN_SECRET_KEY = "3475"  # 🔑 รหัสลับสำหรับแต่งตั้ง Admin
+PEARL_PRICE = 5.0           # 🧋 ราคาไข่มุก
+PEARL_COST = 1.0            # 🧋 ต้นทุนไข่มุก
 
 # --- รายการเมนูทั้งหมดจากรูปภาพ (68 เมนู) ---
 DEFAULT_MENU = {
@@ -210,6 +212,10 @@ if "username" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = "user"
 
+# บังคับใช้เมนู 68 รายการเสมอ
+if "menu" not in st.session_state or len(st.session_state.menu) != len(DEFAULT_MENU):
+    st.session_state.menu = DEFAULT_MENU.copy()
+
 # ==========================================
 # 1. หน้าเข้าสู่ระบบ / สมัครสมาชิก
 # ==========================================
@@ -320,13 +326,6 @@ if not st.session_state.logged_in:
 # 2. หน้าจอหลักหลังเข้าสู่ระบบสำเร็จ
 # ==========================================
 else:
-    PEARL_PRICE = 5.0
-    PEARL_COST = 1.0
-
-    # โหลดเมนูเริ่มต้นจากรูปภาพทั้งหมด
-    # บังคับดึง 68 เมนูใหม่ทันทีถ้าจำนวนไม่ตรง
-if "menu" not in st.session_state or len(st.session_state.menu) != len(DEFAULT_MENU):
-    st.session_state.menu = DEFAULT_MENU.copy()
     # Sidebar: แสดงผู้ใช้งาน & ปุ่มจัดการเมนู
     with st.sidebar:
         role_badge = "👑 ADMIN" if st.session_state.role == "admin" else "👤 USER"
@@ -342,7 +341,6 @@ if "menu" not in st.session_state or len(st.session_state.menu) != len(DEFAULT_M
         st.divider()
         st.header("⚙️ จัดการเมนู")
         
-        # ปุ่มดึงเมนูทั้งหมดจากรูปภาพกลับมา
         if st.button("🔄 รีเซ็ตเมนูทั้งหมด (คืนค่าจากรูปภาพ)", use_container_width=True):
             st.session_state.menu = DEFAULT_MENU.copy()
             st.success("คืนค่าเมนูทั้งหมดจากรูปภาพเรียบร้อย!")
@@ -385,7 +383,7 @@ if "menu" not in st.session_state or len(st.session_state.menu) != len(DEFAULT_M
                 else:
                     st.info("ไม่มีสมาชิกอื่นในระบบ")
 
-    # Header ตกแต่งสวยงาม
+    # Header
     st.markdown(
         """
         <div style="background-color: #E8F5E9; padding: 15px; border-radius: 12px; border-left: 6px solid #2E7D32; margin-bottom: 20px;">
