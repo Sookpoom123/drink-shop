@@ -16,7 +16,7 @@ ADMIN_SECRET_KEY = "3475"  # 🔑 รหัสลับสำหรับแต�
 PEARL_PRICE = 5.0           # 🧋 ราคาไข่มุก
 PEARL_COST = 1.0            # 🧋 ต้นทุนไข่มุก
 
-# --- รายการเมนูทั้งหมด (68 เมนู) ---
+# --- รายการเมนูเริ่มต้น (68 เมนู) ---
 DEFAULT_MENU = {
     # --- ชาใส / ชาผลไม้ / กาแฟ / นมสดรสต่างๆ ---
     "ชาดำเย็น": {"cost": 6.61, "price": 19},
@@ -132,12 +132,46 @@ def init_db():
             role TEXT DEFAULT 'user'
         )
     ''')
-    try:
-        c.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'")
-    except sqlite3.OperationalError:
-        pass
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS menu_items (
+            name TEXT PRIMARY KEY,
+            cost REAL,
+            price REAL
+        )
+    ''')
+    
+    # เพิ่มเมนูเริ่มต้นลงฐานข้อมูลหากยังไม่มี
+    c.execute("SELECT COUNT(*) FROM menu_items")
+    if c.fetchone()[0] == 0:
+        for name, info in DEFAULT_MENU.items():
+            c.execute("INSERT OR IGNORE INTO menu_items (name, cost, price) VALUES (?, ?, ?)", 
+                      (name, info['cost'], info['price']))
+            
+    conn.commit()
+    conn.close()
 
-    c.execute("UPDATE users SET role = 'admin' WHERE username = 'admin'")
+def get_menu_from_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT name, cost, price FROM menu_items")
+    rows = c.fetchall()
+    conn.close()
+    menu_dict = {}
+    for r in rows:
+        menu_dict[r[0]] = {"cost": r[1], "price": r[2]}
+    return menu_dict
+
+def save_menu_item_db(name, cost, price):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT OR REPLACE INTO menu_items (name, cost, price) VALUES (?, ?, ?)", (name, cost, price))
+    conn.commit()
+    conn.close()
+
+def delete_menu_item_db(name):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("DELETE FROM menu_items WHERE name = ?", (name,))
     conn.commit()
     conn.close()
 
@@ -212,9 +246,8 @@ if "username" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = "user"
 
-# บังคับใช้เมนู 68 รายการเสมอ
-if "menu" not in st.session_state or len(st.session_state.menu) != len(DEFAULT_MENU):
-    st.session_state.menu = DEFAULT_MENU.copy()
+# โหลดเมนูจากฐานข้อมูล SQLite
+current_menu = get_menu_from_db()
 
 # ==========================================
 # 🎨 ปรับแต่งธีมสีสดใส (CSS Overrides)
@@ -226,17 +259,14 @@ st.markdown(
     footer {visibility: hidden;}
     header {visibility: hidden;}
 
-    /* 1. พื้นหลังหลักทั้งหน้าเว็บเป็นสีไล่เฉดสดใส */
     .stApp {
         background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 50%, #A1C4FD 100%) !important;
     }
 
-    /* 2. พื้นหลังแถบข้าง Sidebar */
     section[data-testid="stSidebar"] {
         background: linear-gradient(180deg, #FFE29F 0%, #FFAE34 100%) !important;
     }
 
-    /* 3. การ์ดหัวข้อหลัก */
     .header-card {
         background: linear-gradient(135deg, #FFF6B7 0%, #F68084 100%) !important;
         padding: 25px;
@@ -247,7 +277,6 @@ st.markdown(
         margin-bottom: 20px;
     }
 
-    /* 4. กล่องเนื้อหาและฟอร์มสีพาสเทลสดใส */
     div[data-testid="stForm"], div[data-testid="stExpander"], div[data-testid="stVerticalBlock"] > div[style*="background-color"] {
         background-color: #FFF9C4 !important;
         border-radius: 18px !important;
@@ -255,7 +284,6 @@ st.markdown(
         box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important;
     }
 
-    /* 5. ปุ่มกดสีส้มชมพูสะดุดตา */
     div.stButton > button, div.stFormSubmitButton > button {
         background: linear-gradient(90deg, #FF512F 0%, #DD2476 100%) !important;
         color: white !important;
@@ -272,7 +300,6 @@ st.markdown(
         box-shadow: 0 6px 20px rgba(221, 36, 118, 0.6) !important;
     }
 
-    /* 6. ช่องกรอกข้อมูล */
     div[data-baseweb="input"] {
         background-color: #FFFFFF !important;
         border-radius: 12px !important;
@@ -370,12 +397,8 @@ else:
 
         st.divider()
         st.header("⚙️ จัดการเมนู")
-        
-        if st.button("🔄 รีเซ็ตเมนูทั้งหมด (คืนค่าจากรูปภาพ)", use_container_width=True):
-            st.session_state.menu = DEFAULT_MENU.copy()
-            st.success("คืนค่าเมนูทั้งหมดเรียบร้อย!")
-            st.rerun()
 
+        # พนักงานทั่วไป และ Admin สามารถเพิ่มเมนูใหม่ได้
         with st.expander("➕ เพิ่มเมนูใหม่"):
             new_name = st.text_input("ชื่อเมนูใหม่")
             new_cost = st.number_input("ราคาต้นทุน (บาท)", min_value=0.0, value=10.0, step=0.5)
@@ -383,18 +406,19 @@ else:
             
             if st.button("💾 บันทึกเมนูใหม่", use_container_width=True):
                 if new_name.strip() != "":
-                    st.session_state.menu[new_name] = {"cost": new_cost, "price": new_price}
+                    save_menu_item_db(new_name.strip(), new_cost, new_price)
                     st.success(f"เพิ่มเมนู '{new_name}' เรียบร้อย!")
                     st.rerun()
                 else:
                     st.warning("กรุณากรอกชื่อเมนู")
 
+        # เฉพาะ Admin เท่านั้นที่ลบเมนูได้
         if st.session_state.role == "admin":
             with st.expander("🗑️ ลบเมนู (สิทธิ์ Admin)"):
-                if len(st.session_state.menu) > 0:
-                    delete_item = st.selectbox("เลือกเมนูที่ต้องการลบ", list(st.session_state.menu.keys()))
+                if len(current_menu) > 0:
+                    delete_item = st.selectbox("เลือกเมนูที่ต้องการลบ", list(current_menu.keys()))
                     if st.button("❌ ลบเมนูนี้", use_container_width=True):
-                        del st.session_state.menu[delete_item]
+                        delete_menu_item_db(delete_item)
                         st.success(f"ลบเมนู '{delete_item}' เรียบร้อย!")
                         st.rerun()
 
@@ -425,12 +449,12 @@ else:
     )
 
     # --- ส่วนที่ 1: ตารางราคา ---
-    menu_count = len(st.session_state.menu)
+    menu_count = len(current_menu)
     with st.expander(f"📋 ดูตารางราคา & กำไรทั้งหมด (ทั้งหมด {menu_count} เมนู)", expanded=False):
         search_menu = st.text_input("🔍 ค้นหาเมนูในตาราง...", "")
-        if st.session_state.menu:
+        if current_menu:
             menu_data = []
-            for item, info in st.session_state.menu.items():
+            for item, info in current_menu.items():
                 if search_menu.lower() in item.lower():
                     cost_base = info['cost']
                     price_base = info['price']
@@ -442,9 +466,9 @@ else:
                     
                     menu_data.append({
                         "เมนู": item,
-                        "ราคาปกติ": f"{price_base} บ.",
+                        "ราคาปกติ": f"{price_base:.0f} บ.",
                         "กำไรปกติ": f"{profit_base:.2f} บ.",
-                        "ราคา (+มุก)": f"{price_pearl} บ.",
+                        "ราคา (+มุก)": f"{price_pearl:.0f} บ.",
                         "กำไร (+มุก)": f"{profit_pearl:.2f} บ."
                     })
             st.dataframe(pd.DataFrame(menu_data), use_container_width=True, height=250)
@@ -454,15 +478,15 @@ else:
         st.subheader("🛒 บันทึกรายการขาย")
         selected_date = st.date_input("📅 วันที่ทำรายการ", value=date.today())
 
-        if st.session_state.menu:
+        if current_menu:
             search_sale_term = st.text_input("🔍 ค้นหาชื่อเมนูที่จะขาย:", placeholder="พิมพ์ค้นหา เช่น ชานม, บ๊วย, ปั่น, นมสด...", key="search_sale_input")
-            filtered_sale_menu = [item for item in st.session_state.menu.keys() if search_sale_term.strip().lower() in item.lower()]
+            filtered_sale_menu = [item for item in current_menu.keys() if search_sale_term.strip().lower() in item.lower()]
 
             if filtered_sale_menu:
                 selected_item = st.selectbox("เลือกรสชาติ / เมนู:", filtered_sale_menu)
 
-                base_cost = st.session_state.menu[selected_item]["cost"]
-                base_price = st.session_state.menu[selected_item]["price"]
+                base_cost = current_menu[selected_item]["cost"]
+                base_price = current_menu[selected_item]["price"]
 
                 col_opt1, col_opt2 = st.columns(2)
                 with col_opt1:
@@ -474,7 +498,7 @@ else:
                 unit_cost = base_cost + (PEARL_COST if add_pearl else 0)
                 unit_profit = unit_price - unit_cost
 
-                st.info(f"💡 **{selected_item}** {'(+เพิ่มไข่มุก)' if add_pearl else ''} | แก้วละ **{unit_price} บาท** (กำไร **{unit_profit:.2f} บาท**)")
+                st.info(f"💡 **{selected_item}** {'(+เพิ่มไข่มุก)' if add_pearl else ''} | แก้วละ **{unit_price:.0f} บาท** (กำไร **{unit_profit:.2f} บาท**)")
 
                 qty = st.number_input("จำนวนแก้ว", min_value=1, value=1)
                 
@@ -485,7 +509,7 @@ else:
                 st.markdown(
                     f"""
                     <div style="background-color: #FFF59D; padding: 12px; border-radius: 10px; margin: 10px 0; text-align: center; border: 1px solid #FBC02D;">
-                        <span style="font-size: 17px; color: #333;">💵 ยอดขาย: <b>{total_price:,} บาท</b> | 📈 กำไรสุทธิ: <b style="color: #2E7D32;">{total_profit:,.2f} บาท</b></span>
+                        <span style="font-size: 17px; color: #333;">💵 ยอดขาย: <b>{total_price:,.0f} บาท</b> | 📈 กำไรสุทธิ: <b style="color: #2E7D32;">{total_profit:,.2f} บาท</b></span>
                     </div>
                     """, 
                     unsafe_allow_html=True
@@ -518,12 +542,12 @@ else:
             qr_total = df_day[df_day["payment_method"].str.contains("QR", na=False)]["total_price"].sum()
 
             col1, col2, col3, col4 = st.columns(4)
-            col1.metric("ยอดขายรวม", f"{total_sales:,} บ.")
+            col1.metric("ยอดขายรวม", f"{total_sales:,.0f} บ.")
             col2.metric("ต้นทุนรวม", f"{total_costs:,.2f} บ.")
             col3.metric("กำไรสุทธิ", f"{total_profits:,.2f} บ.")
             col4.metric("ขายได้ทั้งหมด", f"{total_cups:,} แก้ว")
 
-            st.write(f"💳 **แยกตามช่องทางเงินเข้า:** 💵 เงินสด `{cash_total:,} บ.` | 📱 สแกน QR `{qr_total:,} บ.`")
+            st.write(f"💳 **แยกตามช่องทางเงินเข้า:** 💵 เงินสด `{cash_total:,.0f} บ.` | 📱 สแกน QR `{qr_total:,.0f} บ.`")
 
             with st.expander("📋 รายละเอียดประวัติการขายวันนี้", expanded=True):
                 df_display = df_day[["id", "item_name", "qty", "total_price", "total_cost", "total_profit", "payment_method"]].copy()
